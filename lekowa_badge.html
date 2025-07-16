@@ -12,13 +12,12 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Style pour le canvas pour qu'il soit responsive */
         canvas {
             max-width: 100%;
             height: auto;
             border-radius: 0.75rem;
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            background-color: #f3f4f6; /* Couleur de fond pour le canvas vide */
+            background-color: #f3f4f6;
         }
     </style>
 </head>
@@ -31,9 +30,8 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Colonne des contrôles -->
+            <!-- Colonne des données saisies -->
             <div class="flex flex-col space-y-6">
-                <!-- Le champ pour charger le modèle a été retiré -->
                 <div>
                     <label for="nameInput" class="block text-sm font-medium text-gray-700 mb-2">1. Saisir votre Nom et Prénom</label>
                     <input type="text" id="nameInput" placeholder="Ex: Jean Dupont" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
@@ -64,40 +62,35 @@
         const canvas = document.getElementById('badgeCanvas');
         const ctx = canvas.getContext('2d');
 
-        // --- Variables pour stocker les images ---
+        // --- les Variables pour stocker les images ---
         let baseImage = new Image();
         let userImage = null;
         let isBaseImageLoaded = false;
+        
+        baseImage.crossOrigin = "Anonymous"; // pour éviter les problèmes de CORS
 
         // --- Fonction pour dessiner un état d'attente sur le canvas ---
         function drawInitialCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#e5e7eb'; // Gris clair
+            ctx.fillStyle = '#e5e7eb';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#6b7280'; // Gris foncé
+            ctx.fillStyle = '#6b7280';
             ctx.textAlign = 'center';
             ctx.font = '30px Inter';
             ctx.fillText("Chargement du modèle de badge...", canvas.width / 2, canvas.height / 2);
-            downloadBtn.disabled = true; // Le bouton est désactivé au début
+            downloadBtn.disabled = true; // activation du bouton de téléchargement
         }
 
-        // --- Fonction pour charger le modèle de badge automatiquement ---
+        // --- Fonction pour le chargement du modèle de badge automatiquement ---
         function loadTemplate() {
-            // IMPORTANT : Assurez-vous que le fichier 'template_badge.jpeg' se trouve
-            // bien dans un dossier 'lib' à la racine de votre projet.
-            // Pour la démo, j'utilise un lien direct. Remplacez-le par votre chemin local.
-            baseImage.src = 'lib/template_badge.jpeg'; 
-            
-            // Gestionnaire de succès
+            baseImage.src = 'lib/template_badge.jpeg';
             baseImage.onload = () => {
                 isBaseImageLoaded = true;
-                downloadBtn.disabled = false; // Activer le bouton de téléchargement
-                drawBadge(); // Dessiner le badge une fois le modèle chargé
+                downloadBtn.disabled = false; // désactivation du bouton de téléchargemement
+                drawBadge();
             };
-
-            // Gestionnaire d'erreur
             baseImage.onerror = () => {
-                console.error("Erreur: Le modèle de badge n'a pas pu être chargé depuis '/lib/template_badge.jpeg'.");
+                console.error("Erreur: Le modèle de badge n'a pas pu être chargé depuis le path enseigné.");
                 ctx.fillStyle = 'red';
                 ctx.font = 'bold 24px Inter';
                 ctx.fillText("Erreur de chargement du modèle.", canvas.width / 2, canvas.height / 2 - 20);
@@ -108,72 +101,98 @@
 
         // --- Fonction principale pour dessiner le badge ---
         function drawBadge() {
-            if (!isBaseImageLoaded) {
-                return;
-            }
+            if (!isBaseImageLoaded) return;
 
             // 1. Adapter la taille du canvas à celle du modèle et dessiner
             canvas.width = baseImage.width;
             canvas.height = baseImage.height;
             ctx.drawImage(baseImage, 0, 0);
 
-            // 2. Dessiner la photo de l'utilisateur pour couvrir l'originale
+            // 2. Dessiner la photo de l'utilisateur sans la déformer (style "cover")
             if (userImage) {
-                // Coordonnées et dimensions pour la photo de profil (ajustées pour le modèle)
                 const photoX = 774;
                 const photoY = 215;
                 const photoWidth = 595;
                 const photoHeight = 825;
-                
-                // On dessine l'image de l'utilisateur
-                ctx.drawImage(userImage, photoX, photoY, photoWidth, photoHeight);
+
+                // On sauvegarde le contexte pour utiliser un masque de découpe (clipping mask)
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(photoX, photoY, photoWidth, photoHeight);
+                ctx.clip(); // Le masque est appliqué, rien ne sera dessiné en dehors de ce rectangle
+
+                // Calcul du ratio pour garder les proportions
+                const sourceRatio = userImage.width / userImage.height;
+                const targetRatio = photoWidth / photoHeight;
+                let drawWidth, drawHeight, offsetX, offsetY;
+
+                if (sourceRatio > targetRatio) { // Image plus large que la zone
+                    drawHeight = photoHeight;
+                    drawWidth = drawHeight * sourceRatio;
+                    offsetX = (drawWidth - photoWidth) / 2;
+                    offsetY = 0;
+                } else { // Image plus haute ou de même ratio
+                    drawWidth = photoWidth;
+                    drawHeight = drawWidth / sourceRatio;
+                    offsetX = 0;
+                    offsetY = (drawHeight - photoHeight) / 2;
+                }
+
+                // On dessine l'image recadrée et centrée
+                ctx.drawImage(userImage, photoX - offsetX, photoY - offsetY, drawWidth, drawHeight);
+
+                // On restaure le contexte pour enlever le masque
+                ctx.restore();
             }
 
-            // 3. Cacher le texte "J'y serai et toi ?" par un rectangle blanc
+            // 3. Ajouter du nom & prenom du participant dans un rectangle
+            // Utilisation des bonnes coordonnées qui sont DANS le canvas
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(760, 1180, 650, 100);
 
             // 4. Dessiner le nom de l'utilisateur
             const name = nameInput.value.trim() || "Votre Nom et Prénom";
-            ctx.fillStyle = '#00A99D'; // Couleur verte/turquoise du festival
+            ctx.fillStyle = '#00A99D';
             ctx.textAlign = 'center';
             ctx.font = 'bold 60px Inter';
 
-            // Ajuster la taille de la police si le nom est trop long
-            if (name.length > 20) {
+            if (name.length > 25) {
+                ctx.font = 'bold 40px Inter';
+            } else if (name.length > 20) {
                 ctx.font = 'bold 45px Inter';
             } else if (name.length > 15) {
                 ctx.font = 'bold 50px Inter';
             }
             
-            // Coordonnées pour le texte, centré
+            // CORRECTION: Utilisation des bonnes coordonnées pour le texte
             const textX = 1090;
             const textY = 1250;
             ctx.fillText(name, textX, textY);
         }
 
         // --- Événements ---
-
-        // Mettre à jour le badge quand l'utilisateur tape son nom
         nameInput.addEventListener('input', drawBadge);
 
-        // Mettre à jour le badge quand l'utilisateur choisit sa photo
         photoInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
                 userImage = new Image();
+                userImage.crossOrigin = "Anonymous"; // Important si l'image est traitée
                 userImage.src = URL.createObjectURL(file);
                 userImage.onload = () => {
                     drawBadge();
+                    URL.revokeObjectURL(userImage.src); // Libère la mémoire
                 };
             }
         });
 
-        // Gérer le clic sur le bouton de téléchargement
         downloadBtn.addEventListener('click', () => {
             if (!isBaseImageLoaded) return;
+            // Redessiner une dernière fois pour être sûr d'avoir la version finale
+            drawBadge(); 
+            
             const link = document.createElement('a');
-            const nameForFile = nameInput.value.replace(/\s+/g, '-').toLowerCase() || 'participant';
+            const nameForFile = nameInput.value.replace(/\s+/g, '-').toLowerCase() || 'Participant';
             link.download = `badge-lekowafestival-${nameForFile}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
@@ -182,7 +201,6 @@
         // --- Initialisation ---
         drawInitialCanvas();
         loadTemplate();
-
     </script>
 </body>
 </html>
