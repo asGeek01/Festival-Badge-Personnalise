@@ -196,6 +196,16 @@
             link.download = `badge-lekowafestival-${nameForFile}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
+
+            //Réinitialisation des variables après le téléchargement
+            nameInput.value = ''; 
+            photoInput.value = '';
+            userImage.value = null;
+
+            //Le Rafaichissement de la page après un court délai
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         });
 
         // --- Initialisation ---
