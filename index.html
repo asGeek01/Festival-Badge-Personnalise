@@ -110,8 +110,8 @@
 
             // 2. Dessiner la photo de l'utilisateur sans la déformer (style "cover")
             if (userImage) {
-                const photoX = 774;
-                const photoY = 215;
+                const photoX = 765;
+                const photoY = 95;
                 const photoWidth = 595;
                 const photoHeight = 825;
 
@@ -148,7 +148,7 @@
             // 3. Ajouter du nom & prenom du participant dans un rectangle
             // Utilisation des bonnes coordonnées qui sont DANS le canvas
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(760, 1180, 650, 100);
+            ctx.fillRect(760, 1000, 650, 120);
 
             // 4. Dessiner le nom de l'utilisateur
             const name = nameInput.value.trim() || "Votre Nom et Prénom";
@@ -166,7 +166,7 @@
             
             // CORRECTION: Utilisation des bonnes coordonnées pour le texte
             const textX = 1090;
-            const textY = 1250;
+            const textY = 1080;
             ctx.fillText(name, textX, textY);
         }
 
