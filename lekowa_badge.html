@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Badge - Festival Lèkowa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style pour le canvas pour qu'il soit responsive */
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            background-color: #f3f4f6; /* Couleur de fond pour le canvas vide */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Générateur de Badge</h1>
+            <p class="text-gray-500 mt-2">Créez votre badge personnalisé pour le Festival Lèkowa 2025 !</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Colonne des contrôles -->
+            <div class="flex flex-col space-y-6">
+                <!-- Le champ pour charger le modèle a été retiré -->
+                <div>
+                    <label for="nameInput" class="block text-sm font-medium text-gray-700 mb-2">1. Saisir votre Nom et Prénom</label>
+                    <input type="text" id="nameInput" placeholder="Ex: Jean Dupont" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label for="photoInput" class="block text-sm font-medium text-gray-700 mb-2">2. Charger votre Photo</label>
+                    <input type="file" id="photoInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                </div>
+                <div class="pt-4">
+                     <button id="downloadBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                        Télécharger mon Badge
+                    </button>
+                </div>
+            </div>
+
+            <!-- Colonne de l'aperçu du badge -->
+            <div class="flex items-center justify-center">
+                <canvas id="badgeCanvas" width="1080" height="1080"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Références aux éléments du DOM ---
+        const nameInput = document.getElementById('nameInput');
+        const photoInput = document.getElementById('photoInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const canvas = document.getElementById('badgeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Variables pour stocker les images ---
+        let baseImage = new Image();
+        let userImage = null;
+        let isBaseImageLoaded = false;
+
+        // --- Fonction pour dessiner un état d'attente sur le canvas ---
+        function drawInitialCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#e5e7eb'; // Gris clair
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#6b7280'; // Gris foncé
+            ctx.textAlign = 'center';
+            ctx.font = '30px Inter';
+            ctx.fillText("Chargement du modèle de badge...", canvas.width / 2, canvas.height / 2);
+            downloadBtn.disabled = true; // Le bouton est désactivé au début
+        }
+
+        // --- Fonction pour charger le modèle de badge automatiquement ---
+        function loadTemplate() {
+            // IMPORTANT : Assurez-vous que le fichier 'template_badge.jpeg' se trouve
+            // bien dans un dossier 'lib' à la racine de votre projet.
+            // Pour la démo, j'utilise un lien direct. Remplacez-le par votre chemin local.
+            baseImage.src = 'lib/template_badge.jpeg'; 
+            
+            // Gestionnaire de succès
+            baseImage.onload = () => {
+                isBaseImageLoaded = true;
+                downloadBtn.disabled = false; // Activer le bouton de téléchargement
+                drawBadge(); // Dessiner le badge une fois le modèle chargé
+            };
+
+            // Gestionnaire d'erreur
+            baseImage.onerror = () => {
+                console.error("Erreur: Le modèle de badge n'a pas pu être chargé depuis '/lib/template_badge.jpeg'.");
+                ctx.fillStyle = 'red';
+                ctx.font = 'bold 24px Inter';
+                ctx.fillText("Erreur de chargement du modèle.", canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = '18px Inter';
+                ctx.fillText("Vérifiez le chemin du fichier.", canvas.width / 2, canvas.height / 2 + 20);
+            };
+        }
+
+        // --- Fonction principale pour dessiner le badge ---
+        function drawBadge() {
+            if (!isBaseImageLoaded) {
+                return;
+            }
+
+            // 1. Adapter la taille du canvas à celle du modèle et dessiner
+            canvas.width = baseImage.width;
+            canvas.height = baseImage.height;
+            ctx.drawImage(baseImage, 0, 0);
+
+            // 2. Dessiner la photo de l'utilisateur pour couvrir l'originale
+            if (userImage) {
+                // Coordonnées et dimensions pour la photo de profil (ajustées pour le modèle)
+                const photoX = 774;
+                const photoY = 215;
+                const photoWidth = 595;
+                const photoHeight = 825;
+                
+                // On dessine l'image de l'utilisateur
+                ctx.drawImage(userImage, photoX, photoY, photoWidth, photoHeight);
+            }
+
+            // 3. Cacher le texte "J'y serai et toi ?" par un rectangle blanc
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(760, 1180, 650, 100);
+
+            // 4. Dessiner le nom de l'utilisateur
+            const name = nameInput.value.trim() || "Votre Nom et Prénom";
+            ctx.fillStyle = '#00A99D'; // Couleur verte/turquoise du festival
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 60px Inter';
+
+            // Ajuster la taille de la police si le nom est trop long
+            if (name.length > 20) {
+                ctx.font = 'bold 45px Inter';
+            } else if (name.length > 15) {
+                ctx.font = 'bold 50px Inter';
+            }
+            
+            // Coordonnées pour le texte, centré
+            const textX = 1090;
+            const textY = 1250;
+            ctx.fillText(name, textX, textY);
+        }
+
+        // --- Événements ---
+
+        // Mettre à jour le badge quand l'utilisateur tape son nom
+        nameInput.addEventListener('input', drawBadge);
+
+        // Mettre à jour le badge quand l'utilisateur choisit sa photo
+        photoInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                userImage = new Image();
+                userImage.src = URL.createObjectURL(file);
+                userImage.onload = () => {
+                    drawBadge();
+                };
+            }
+        });
+
+        // Gérer le clic sur le bouton de téléchargement
+        downloadBtn.addEventListener('click', () => {
+            if (!isBaseImageLoaded) return;
+            const link = document.createElement('a');
+            const nameForFile = nameInput.value.replace(/\s+/g, '-').toLowerCase() || 'participant';
+            link.download = `badge-lekowafestival-${nameForFile}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // --- Initialisation ---
+        drawInitialCanvas();
+        loadTemplate();
+
+    </script>
+</body>
+</html>
